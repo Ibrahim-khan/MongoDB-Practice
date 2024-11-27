@@ -48,6 +48,28 @@ app.get("/", (req,res)=> {
     // CRUD - Create, Read, Update, Delete
     // Create
 
+    app.get("/products", async (req, res) => {
+   
+        try {
+            // const price = req.query.price;
+            const products = await Product.find(); //{price : {$gt: price}}
+           
+            if(products){
+                res.status(200).send({
+                    success : true,
+                    message : "return all products",
+                    data : products,
+                });
+            } else{
+                res.status(404).send({
+                    success: false,
+                    message : "products not found",
+                });
+            }
+        } catch (error) {
+            res.status(500).send({ message: error.message });
+        }
+    })
 
 app.post("/products", async (req, res) => {
    
@@ -129,6 +151,59 @@ app.get("/products/:id", async (req, res) => {
 })
 
 
+app.delete("/products/:id", async(req,res) => {
+    try {
+        const id = req.params.id;
+        const product = await Product.deleteOne({_id: id});
+
+        if(product){
+            res.status(200).send({
+                success : true,
+                message : "Product was deleted",
+                data : product 
+            });
+        } else{
+            res.status(404).send({
+                success: false,
+                message : "product was not deleted with this id",
+            });
+        }
+    } catch (error) {
+        res.status(500).send({ message: error.message});
+    }
+})
+
+app.put("/products/:id", async (res,req) => {
+    try {
+        const id = req.params.id;
+        const updatedProduct = await Product.updateOne(
+            {_id: id}, 
+            {
+                $set : {
+                    price: req.body.price,
+                },
+            },
+            {new: true}
+        );
+        
+        if(updatedProduct){
+            res.status(200).send({
+                success : true,
+                message : "Product Updated",
+                data : updatedProduct
+            });
+        } else{
+            res.status(404).send({
+                success: false,
+                message : "Product not updated",
+            });
+        }
+    } catch (error) {
+        res.status(500).send({ message: error.message});
+    }
+})
+
+
 // DATABASE -> collecitons -> document
 
 // POST: /products -> create a product
@@ -136,3 +211,5 @@ app.get("/products/:id", async (req, res) => {
 // GET: /products/:id -> return a specific product
 // PUT: /products/:id -> update a product based on id
 // DELETE: /products/:id -> delete a product based on id
+
+
