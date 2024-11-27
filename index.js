@@ -12,15 +12,59 @@ app.use(express.urlencoded({extended: true}));
 const productSchema = new mongoose.Schema({
     title : {
         type: String,
-        required: true
+        required: [true, "product title is required"],
+        minlength: [3, "Minimum length of the product title should be 3"],
+        maxlength: [100, "Maximum length of the product title should be 100"],
+        // lowercase: true,
+        // uppercase: true,
+        trim: true, // trim ignore space after and before title
+        // enum: {
+        //     values: ["iphone", "samsung"], //accept only this item
+        //     message: "{VALUE} is not supported",
+        // }
+
+                    // // for custom validation
+                    // validate: {
+                    //     validator: function (v) {
+                    //        return v.length === 10
+                    //     },
+                    //     message: (props) => `${props.value} is not a valid title`,
+                    // },
     },
-    price : Number,
+    price : {
+        type: Number,
+        // min: [200, "Minimum price of the product should be 200"],
+        // max: [100000, "Maximum price of the product should be 100000"],
+    },
+    rating: {
+        type : Number,
+        require: true,
+    },
+    // email{
+    //     type: String,
+    //     unique: true,   // that's mean user can't use multiple times
+    // },
+
     description: String,
+
+    phone: {
+        type: String,
+        require: [true, "Phone number is required"],
+        validate: {
+            validator: function(v){
+                const phoneRegex = /\d{3}-\d{3}-\d{4}/;
+                return phoneRegex.test(v);
+            },
+            message: (props) => `${props.value} is not a valid phone number`
+        },
+        required: [true, "User phone number required"]
+    },
     createdAt: {
         type: Date,
         default: Date.now
     },
 });
+
 // create product model
 const Product = mongoose.model("Products", productSchema);
 
@@ -35,7 +79,7 @@ const connectDB = async () => {
     }
 }
 
-
+// create server
 app.listen(port, async()=> {
     console.log(`server is runngin at http://localhost:${port}`);
     await connectDB();
@@ -48,13 +92,38 @@ app.get("/", (req,res)=> {
     // CRUD - Create, Read, Update, Delete
     // Create
 
+    app.post("/products", async(req, res) => {
+        try {
+            const newProduct = new Product({
+                title: req.body.title,
+                price: req.body.price,
+                rating: req.body.rating,
+                description: req.body.description,
+                phone: req.body.phone,
+            });
+            const productData = await newProduct.save();
+            res.status(201).send(productData);
+        }catch(error){
+            res.status(500).send({ message: error.message});
+        }
+    });
+
+
     app.get("/products", async (req, res) => {
    
         try {
-            // const price = req.query.price;
-            const products = await Product.find(); //{price : {$gt: price}}
+            const price = req.query.price;
+            const rating = req.query.rating;
+            let products;
            
-            if(products){
+            if(price && rating){
+                products = await Product.find({
+                    $or: [{ price: {$gt: price}}, { rating: { $gt: rating}}],
+                });               
+            } else {
+                products = await Product.find();
+            }
+            if (products) {
                 res.status(200).send({
                     success : true,
                     message : "return all products",
@@ -62,36 +131,37 @@ app.get("/", (req,res)=> {
                 });
             } else{
                 res.status(404).send({
-                    success: false,
-                    message : "products not found",
+                success: false,
+                message : "products not found",
                 });
             }
         } catch (error) {
             res.status(500).send({ message: error.message });
         }
-    })
+    });
 
-app.post("/products", async (req, res) => {
+
+// app.post("/products", async (req, res) => {
    
-    try {
-        const products = await Product.find();
+//     try {
+//         const products = await Product.find();
        
-        if(products){
-            res.status(200).send({
-                success : true,
-                message : "return all products",
-                data : products
-            });
-        } else{
-            res.status(404).send({
-                success: false,
-                message : "products not found",
-            });
-        }
-    } catch (error) {
-        res.status(500).send({ message: error.message });
-    }
-})
+//         if(products){
+//             res.status(200).send({
+//                 success : true,
+//                 message : "return all products",
+//                 data : products
+//             });
+//         } else{
+//             res.status(404).send({
+//                 success: false,
+//                 message : "products not found",
+//             });
+//         }
+//     } catch (error) {
+//         res.status(500).send({ message: error.message });
+//     }
+// })
    
    
    
@@ -180,7 +250,10 @@ app.put("/products/:id", async (res,req) => {
             {_id: id}, 
             {
                 $set : {
+                    title: req.body.title,
                     price: req.body.price,
+                    description: req.body.description,
+                    rating: req.body.rating,
                 },
             },
             {new: true}
@@ -190,7 +263,7 @@ app.put("/products/:id", async (res,req) => {
             res.status(200).send({
                 success : true,
                 message : "Product Updated",
-                data : updatedProduct
+                data : updatedProduct,
             });
         } else{
             res.status(404).send({
@@ -201,7 +274,7 @@ app.put("/products/:id", async (res,req) => {
     } catch (error) {
         res.status(500).send({ message: error.message});
     }
-})
+});
 
 
 // DATABASE -> collecitons -> document
